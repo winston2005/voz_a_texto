@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Convertidor de Voz a Texto</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        .container {
+            background: #1e293b;
+            border-radius: 24px;
+            padding: 40px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 600px;
+            width: 100%;
+            border: 1px solid #334155;
+        }
+
+        h1 {
+            color: #f8fafc;
+            text-align: center;
+            margin-bottom: 12px;
+            font-size: 1.875rem;
+            font-weight: 600;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.875rem;
+            margin-bottom: 32px;
+        }
+
+        .status {
+            text-align: center;
+            padding: 12px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            transition: all 0.3s ease;
+        }
+
+        .status.waiting {
+            background: #1e40af15;
+            color: #60a5fa;
+            border: 1px solid #1e40af30;
+        }
+
+        .status.listening {
+            background: #10b98115;
+            color: #34d399;
+            border: 1px solid #10b98130;
+            animation: pulse 2s infinite;
+        }
+
+        .status.error {
+            background: #dc262615;
+            color: #f87171;
+            border: 1px solid #dc262630;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.01); }
+        }
+
+        .button-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        button {
+            padding: 14px 28px;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            touch-action: manipulation;
+            -webkit-user-select: none;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #startBtn {
+            background: #3b82f6;
+            color: white;
+            flex: 1;
+        }
+
+        #startBtn:hover:not(:disabled) {
+            background: #2563eb;
+            transform: translateY(-1px);
+        }
+
+        #startBtn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        #startBtn:disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        #stopBtn {
+            background: #475569;
+            color: #e2e8f0;
+            flex: 1;
+        }
+
+        #stopBtn:hover:not(:disabled) {
+            background: #ef4444;
+        }
+
+        #stopBtn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        #stopBtn:disabled {
+            background: #1e293b;
+            color: #475569;
+            cursor: not-allowed;
+            border: 1px solid #334155;
+        }
+
+        .output-container {
+            background: #0f172a;
+            border-radius: 16px;
+            padding: 24px;
+            min-height: 180px;
+            margin-bottom: 16px;
+            border: 1px solid #334155;
+        }
+
+        #output {
+            color: #e2e8f0;
+            font-size: 1.0625rem;
+            line-height: 1.75;
+            word-wrap: break-word;
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .output-container.empty #output {
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        #clearBtn, #copyBtn {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 0.875rem;
+        }
+
+        #clearBtn {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        #clearBtn:hover {
+            background: #475569;
+        }
+
+        #copyBtn {
+            background: #0891b2;
+            color: white;
+        }
+
+        #copyBtn:hover {
+            background: #0e7490;
+        }
+
+        #copyBtn:disabled {
+            background: #334155;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .info {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+        }
+
+        .microphone-icon {
+            font-size: 3.5rem;
+            text-align: center;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+
+        .microphone-icon.active {
+            animation: bounce 0.6s ease-in-out infinite alternate;
+            filter: drop-shadow(0 0 20px #3b82f680);
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0) scale(1); }
+            to { transform: translateY(-8px) scale(1.05); }
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 28px 20px;
+            }
+            
+            h1 {
+                font-size: 1.5rem;
+            }
+
+            .subtitle {
+                font-size: 0.8125rem;
+                margin-bottom: 24px;
+            }
+            
+            button {
+                padding: 12px 20px;
+                font-size: 0.875rem;
+            }
+            
+            .button-container {
+                flex-direction: column;
+            }
+            
+            .button-container button {
+                width: 100%;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .action-buttons button {
+                width: 100%;
+            }
+            
+            #output {
+                font-size: 1rem;
+            }
+            
+            .output-container {
+                padding: 20px;
+                min-height: 150px;
+            }
+
+            .microphone-icon {
+                font-size: 3rem;
+                margin-bottom: 20px;
+            }
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="microphone-icon" id="micIcon">🎙️</div>
+        <h1>Voz a Texto</h1>
+        <div class="subtitle">Transcripción de audio en tiempo real</div>
+        
+        <div class="status waiting" id="status">
+            Listo para iniciar
+        </div>
+
+        <div class="button-container">
+            <button id="startBtn">
+                <span>▶</span>
+                <span>Iniciar</span>
+            </button>
+            <button id="stopBtn" disabled>
+                <span>⏹</span>
+                <span>Detener</span>
+            </button>
+        </div>
+
+        <div class="output-container empty" id="outputContainer">
+            <div id="output">Tu texto aparecerá aquí...</div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="copyBtn" disabled>📋 Copiar</button>
+            <button id="clearBtn">🗑️ Limpiar</button>
+        </div>
+
+        <div class="info">
+            Permite el acceso al micrófono cuando tu navegador lo solicite
+        </div>
+    </div>
+
+    <div class="toast" id="toast">Texto copiado al portapapeles</div>
+
+    <script>
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        
+        if (!SpeechRecognition) {
+            document.getElementById('status').textContent = 'Tu navegador no soporta reconocimiento de voz';
+            document.getElementById('status').className = 'status error';
+            document.getElementById('startBtn').disabled = true;
+        } else {
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'es-ES';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const output = document.getElementById('output');
+            const status = document.getElementById('status');
+            const outputContainer = document.getElementById('outputContainer');
+            const micIcon = document.getElementById('micIcon');
+            const toast = document.getElementById('toast');
+
+            let finalTranscript = '';
+
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }
+
+            startBtn.addEventListener('click', () => {
+                try {
+                    recognition.start();
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                    status.textContent = 'Escuchando...';
+                    status.className = 'status listening';
+                    micIcon.classList.add('active');
+                } catch (error) {
+                    console.error('Error al iniciar:', error);
+                    status.textContent = 'Error al iniciar el micrófono';
+                    status.className = 'status error';
+                }
+            });
+
+            stopBtn.addEventListener('click', () => {
+                recognition.stop();
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                status.textContent = 'Detenido';
+                status.className = 'status waiting';
+                micIcon.classList.remove('active');
+            });
+
+            clearBtn.addEventListener('click', () => {
+                finalTranscript = '';
+                output.textContent = 'Tu texto aparecerá aquí...';
+                outputContainer.classList.add('empty');
+                copyBtn.disabled = true;
+            });
+
+            copyBtn.addEventListener('click', async () => {
+                try {
+                    await navigator.clipboard.writeText(finalTranscript.trim());
+                    showToast('Texto copiado al portapapeles');
+                } catch (error) {
+                    showToast('Error al copiar');
+                }
+            });
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const transcript = event.results[i][0].transcript;
+                    
+                    if (event.results[i].isFinal) {
+                        finalTranscript += transcript + ' ';
+                    } else {
+                        interimTranscript += transcript;
+                    }
+                }
+
+                output.textContent = finalTranscript + interimTranscript;
+                outputContainer.classList.remove('empty');
+                copyBtn.disabled = false;
+                status.textContent = 'Reconociendo...';
+                status.className = 'status listening';
+            };
+
+            recognition.onerror = (event) => {
+                let errorMessage = '';
+                
+                switch(event.error) {
+                    case 'no-speech':
+                        errorMessage = 'No se detectó ninguna voz';
+                        break;
+                    case 'audio-capture':
+                        errorMessage = 'No se pudo acceder al micrófono';
+                        break;
+                    case 'not-allowed':
+                        errorMessage = 'Permiso de micrófono denegado';
+                        break;
+                    case 'network':
+                        errorMessage = 'Error de conexión de red';
+                        break;
+                    default:
+                        errorMessage = `Error: ${event.error}`;
+                }
+                
+                status.textContent = errorMessage;
+                status.className = 'status error';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                micIcon.classList.remove('active');
+            };
+
+            recognition.onend = () => {
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                micIcon.classList.remove('active');
+                
+                if (status.className !== 'status error') {
+                    status.textContent = 'Listo para iniciar';
+                    status.className = 'status waiting';
+                }
+            };
+        }
+    </script>
+</body>
+</html>
