@@ -214,7 +214,12 @@
             text-align: center;
             color: #64748b;
             font-size: 0.8125rem;
-            line-height: 1.5;
+            line-height: 1.6;
+        }
+
+        .info strong {
+            color: #3b82f6;
+            font-weight: 600;
         }
 
         .microphone-icon {
@@ -282,6 +287,10 @@
                 font-size: 3rem;
                 margin-bottom: 20px;
             }
+
+            .info {
+                font-size: 0.75rem;
+            }
         }
 
         .toast {
@@ -347,10 +356,42 @@
     <script>
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         
-        if (!SpeechRecognition) {
-            document.getElementById('status').textContent = 'Tu navegador no soporta reconocimiento de voz';
-            document.getElementById('status').className = 'status error';
+        function detectBrowser() {
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.indexOf('firefox') > -1) return 'firefox';
+            if (userAgent.indexOf('brave') > -1 || navigator.brave) return 'brave';
+            if (userAgent.indexOf('chrome') > -1) return 'chrome';
+            if (userAgent.indexOf('safari') > -1) return 'safari';
+            return 'unknown';
+        }
+
+        function showBrowserInstructions() {
+            const browser = detectBrowser();
+            const status = document.getElementById('status');
+            const info = document.querySelector('.info');
+            
+            let message = 'Tu navegador no soporta reconocimiento de voz';
+            let instructions = '';
+            
+            switch(browser) {
+                case 'firefox':
+                    instructions = '❌ <strong>Firefox no soporta esta funcionalidad.</strong><br><br>✅ Por favor, usa <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong><br><br>También funcionan: Opera, Chromium';
+                    break;
+                case 'brave':
+                    instructions = '🛡️ <strong>Brave bloquea esta función por privacidad.</strong><br><br>Para habilitar:<br>1. Clic en el escudo de Brave (arriba derecha)<br>2. Desactiva "Escudos" para este sitio<br>3. Recarga la página<br><br>O usa <strong>Google Chrome</strong> directamente';
+                    break;
+                default:
+                    instructions = '❌ Este navegador no soporta reconocimiento de voz.<br><br>Por favor, usa <strong>Google Chrome</strong> o <strong>Microsoft Edge</strong>';
+            }
+            
+            status.innerHTML = message;
+            status.className = 'status error';
+            info.innerHTML = instructions;
             document.getElementById('startBtn').disabled = true;
+        }
+        
+        if (!SpeechRecognition) {
+            showBrowserInstructions();
         } else {
             const recognition = new SpeechRecognition();
             
